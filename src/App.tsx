@@ -1,34 +1,48 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useCallback, useEffect, useState } from 'react'
+
+import {
+  Route,
+  createBrowserRouter,
+  RouterProvider,
+  createRoutesFromElements,
+} from "react-router-dom";
+
+import { auth, onAuthStateChange } from "./firebase";
+
+import Login from './Pages/Login';
+import Logout from './Pages/Logout'
+import Register from './Pages/Register';
+import Header from './components/Header';
+
 import './App.css'
+import LoggedInView from './Pages/LoggedInView';
+import LoggedOutView from './Pages/LoggedOutView';
+import UserState from './shared/types/userstate.type';
+import { UserProvider } from './shared/contexts/UserContext';
+
 
 function App() {
-  const [count, setCount] = useState(0)
-
+  const [user, setUser] = useState<UserState>({ loggedIn: false })
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange(setUser);
+    return () => unsubscribe()
+  }, [])
+  const requestLogout = useCallback(() => logout(), [])
+  const router = createBrowserRouter(
+    createRoutesFromElements(
+      <Route path='/' element={<Header />}>
+        <Route index element={user.loggedIn ? <LoggedInView /> : <LoggedOutView />} />
+        <Route path='/login' element={<Login />} />
+        <Route path='/logout' element={<Logout callback={requestLogout} />} />
+        <Route path='/register' element={<Register />} />
+      </Route>
+    )
+  )
+  const logout = () => auth.signOut();
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <UserProvider value={user}>
+      <RouterProvider router={router} />
+    </UserProvider>
   )
 }
 
